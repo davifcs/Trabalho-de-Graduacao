@@ -7,26 +7,17 @@
 TinyGPSPlus gps;
 unsigned long lastUpdateTime = 0;
 
-
+//define lattitute and longitude destination
 #define LAT -23.664674
 #define LNG -46.686737
-/* This example shows a basic framework for how you might
-   use course and distance to guide a person (or a drone)
-   to a destination.  This destination is the Eiffel Tower.
-   Change it as required.  
 
-   The easiest way to get the lat/long coordinate is to 
-   right-click the destination in Google Maps (maps.google.com),
-   and choose "What's here?".  This puts the exact values in the 
-   search box.
-*/
-  // Define pinout for the L298N board
-  int PWMA = 7;
-  int IN1 = 6;
-  int IN2 = 5;
-  int IN3 = 4;
-  int IN4 = 3;
-  int PWMB = 2; 
+// Define pinout for the L298N board
+int PWMA = 7;
+int IN1 = 6;
+int IN2 = 5;
+int IN3 = 4;
+int IN4 = 3;
+int PWMB = 2; 
   
 void setup()
 {
@@ -38,7 +29,7 @@ void setup()
   pinMode(IN4, OUTPUT);
   pinMode(PWMB, OUTPUT);
   
-  //
+  //Begin serial communication
   Serial.begin(ConsoleBaud);
   Serial1.begin(GPSBaud);
 }
@@ -63,8 +54,7 @@ void loop()
       gps.location.lat(), gps.location.lng(), LAT, LNG);
     const char *directionToDestination = TinyGPSPlus::cardinal(courseToDestination);
     int courseChangeNeeded = (int)(360 + courseToDestination - gps.course.deg()) % 360; 
-    Serial.println(gps.course.deg());   
-    // debug
+
     Serial.print("DEBUG: Course2Dest: ");
     Serial.print(courseToDestination);
     Serial.print("  CurCourse: ");
@@ -76,7 +66,7 @@ void loop()
     Serial.print("  CurSpd: ");
     Serial.println(gps.speed.kmph());
 
-    // Within 20 meters of destination?  We're here!
+    // Within 7.0m arrived at destination
     if (distanceToDestination <= 7.0)
     {
       Serial.println("CONGRATULATIONS: You've arrived!");
@@ -88,15 +78,6 @@ void loop()
     Serial.println(" meters to go.");
     Serial.print("INSTRUCTION: ");
 
-    // Standing still? Just indicate which direction to go.
-//    if (gps.speed.kmph() < 2.0)     
-//    {       
-//      Serial.print("Head ");         
-//      Serial.print(directionToDestination);       
-//      Serial.println(".");       
-//      return;     
-//    }           
-    
     Serial.println(courseChangeNeeded);  
     if (courseChangeNeeded >= 345 || courseChangeNeeded < 15){      
       run(200, HIGH, LOW, HIGH, LOW, 200);
@@ -125,7 +106,7 @@ void loop()
   }
 }
 
-
+  //Run motors 
   void run(int L, int LF, bool LR, bool RF, bool RR, int R){
       analogWrite(PWMA, L); 
       digitalWrite(IN1, LF);
