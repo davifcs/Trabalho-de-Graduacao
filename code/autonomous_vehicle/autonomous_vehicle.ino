@@ -1,4 +1,7 @@
 #include <TinyGPS++.h>
+#include <Wire.h>
+#include <HMC5883L_Simple.h>
+
 #define GPSBaud 9600
 #define ConsoleBaud 115200
 
@@ -7,7 +10,10 @@
 TinyGPSPlus gps;
 unsigned long lastUpdateTime = 0;
 
-//define lattitute and longitude destination
+// Create a compass
+HMC5883L_Simple compass;
+
+// Define lattitute and longitude destination
 #define LAT -23.664674
 #define LNG -46.686737
 
@@ -29,9 +35,21 @@ void setup()
   pinMode(IN4, OUTPUT);
   pinMode(PWMB, OUTPUT);
   
-  //Begin serial communication
+  // Begin serial communication
   Serial.begin(ConsoleBaud);
   Serial1.begin(GPSBaud);
+  
+  // Begin I2C communication 
+  Wire.begin();
+
+  // Setting the comppas declination
+  compass.SetDeclination(-21, 7, 'W'); 
+
+  // Configuring the HMC5883L_Simple library
+  compass.SetSamplingMode(COMPASS_SINGLE);
+  compass.SetScale(COMPASS_SCALE_130);
+  compass.SetOrientation(COMPASS_HORIZONTAL_X_NORTH);
+   
 }
 
 void loop()
@@ -41,19 +59,19 @@ void loop()
   while (Serial1.available() > 0)
     gps.encode(Serial1.read());
 
-  // Every 5 seconds, do an update.
-  if (millis() - lastUpdateTime >= 5000)
+  // Every 2 seconds, do an update.
+  if (millis() - lastUpdateTime >= 1000)
   {
     lastUpdateTime = millis();
     Serial.println();
 
-    // Establish our current status
+    // Establish current status
     double distanceToDestination = TinyGPSPlus::distanceBetween(
       gps.location.lat(), gps.location.lng(),LAT, LNG);
     double courseToDestination = TinyGPSPlus::courseTo(
       gps.location.lat(), gps.location.lng(), LAT, LNG);
     const char *directionToDestination = TinyGPSPlus::cardinal(courseToDestination);
-    int courseChangeNeeded = (int)(360 + courseToDestination - gps.course.deg()) % 360; 
+    int courseChangeNeeded = (int)(360 + courseToDestination - compass.GetHeadingDegrees()) % 360; 
 
     Serial.print("DEBUG: Course2Dest: ");
     Serial.print(courseToDestination);
