@@ -3,7 +3,7 @@
 #include <HMC5883L_Simple.h>
 
 #define GPSBaud 9600
-#define ConsoleBaud 115200
+#define ConsoleBaud 9600
 
 // The serial connection to the GPS device
 // The TinyGPS++ object
@@ -13,10 +13,11 @@ unsigned long lastUpdateTime = 0;
 // Create a compass
 HMC5883L_Simple compass;
 
-// Define lattitute and longitude destination
-#define LAT -23.664674
-#define LNG -46.686737
-
+// varibles for bluetooth communications and get lattitute and longitude destination
+String inData;
+float LAT =0;
+float LNG =1;
+ 
 // Define pinout for the L298N board
 int PWMA = 7;
 int IN1 = 6;
@@ -48,12 +49,36 @@ void setup()
   // Configuring the HMC5883L_Simple library
   compass.SetSamplingMode(COMPASS_SINGLE);
   compass.SetScale(COMPASS_SCALE_130);
-  compass.SetOrientation(COMPASS_HORIZONTAL_X_NORTH);
+  compass.SetOrientation(COMPASS_VERTICAL_Y_WEST);
    
 }
 
 void loop()
 {
+
+ //Setting up LAT and LNG through Bluetooth communication
+ while (Serial.available()>0 && LAT == 0) 
+  {
+    inData = Serial.readString();
+    LAT = inData.toFloat();
+    LNG = 0;
+  }
+
+  while (Serial.available()>0 && LNG == 0) 
+  {
+    inData = Serial.readString();
+    LNG = inData.toFloat();
+  }
+
+  while (LAT != 0 && LNG != 0){
+    
+    //reset command
+    if (Serial.available()>0 && Serial.readString() == "r"){
+      LAT = 0;
+      run(0, HIGH, LOW, HIGH, LOW, 0);
+      return;
+    }
+    
   // If any characters have arrived from the GPS,
   // send them to the TinyGPS++ object
   while (Serial1.available() > 0)
@@ -62,64 +87,74 @@ void loop()
   // Every 2 seconds, do an update.
   if (millis() - lastUpdateTime >= 1000)
   {
-    lastUpdateTime = millis();
-    Serial.println();
+      Serial.println(LAT,6);
+      Serial.println(LNG,6);
+      
+      lastUpdateTime = millis();
+      Serial.println();
 
-    // Establish current status
-    double distanceToDestination = TinyGPSPlus::distanceBetween(
-      gps.location.lat(), gps.location.lng(),LAT, LNG);
-    double courseToDestination = TinyGPSPlus::courseTo(
-      gps.location.lat(), gps.location.lng(), LAT, LNG);
-    const char *directionToDestination = TinyGPSPlus::cardinal(courseToDestination);
-    int courseChangeNeeded = (int)(360 + courseToDestination - compass.GetHeadingDegrees()) % 360; 
-
-    Serial.print("DEBUG: Course2Dest: ");
-    Serial.print(courseToDestination);
-    Serial.print("  CurCourse: ");
-    Serial.print(gps.course.deg());
-    Serial.print("  Dir2Dest: ");
-    Serial.print(directionToDestination);
-    Serial.print("  RelCourse: ");
-    Serial.print(courseChangeNeeded);
-    Serial.print("  CurSpd: ");
-    Serial.println(gps.speed.kmph());
-
-    // Within 7.0m arrived at destination
-    if (distanceToDestination <= 7.0)
-    {
-      Serial.println("CONGRATULATIONS: You've arrived!");
-      exit(1);
-    }
-
-    Serial.print("DISTANCE: ");
-    Serial.print(distanceToDestination);
-    Serial.println(" meters to go.");
-    Serial.print("INSTRUCTION: ");
-
-    Serial.println(courseChangeNeeded);  
-    if (courseChangeNeeded >= 345 || courseChangeNeeded < 15){      
-      run(200, HIGH, LOW, HIGH, LOW, 200);
-      return; 
-    }
-    else if (courseChangeNeeded >= 315 && courseChangeNeeded < 345){
-      run(100, HIGH, LOW, HIGH, LOW, 200);
-      return; 
-    }
-    else if (courseChangeNeeded >= 15 && courseChangeNeeded < 45){
-      run(200, HIGH, LOW, HIGH, LOW, 100);
-      return; 
-    }
-    else if (courseChangeNeeded >= 255 && courseChangeNeeded < 315){
-      run(70, HIGH, LOW, HIGH, LOW, 200); 
-      return;
-    }
-    else if (courseChangeNeeded >= 45 && courseChangeNeeded < 105){
-      run(200, HIGH, LOW, HIGH, LOW, 70);
-      return;
-    }
-    else{
-      run(0, HIGH, LOW, HIGH,  LOW, 0);
-      return;
+  
+      // Establish current status
+      double distanceToDestination = TinyGPSPlus::distanceBetween(
+        gps.location.lat(), gps.location.lng(),LAT, LNG);
+      double courseToDestination = TinyGPSPlus::courseTo(
+        gps.location.lat(), gps.location.lng(), LAT, LNG);
+      const char *directionToDestination = TinyGPSPlus::cardinal(courseToDestination);
+      int courseChangeNeeded = (int)(360 + courseToDestination + compass.GetHeadingDegrees()) % 360; 
+  
+      Serial.print("DEBUG: Course2Dest: ");
+      Serial.print(courseToDestination);
+      Serial.print("  CurCourse: ");
+      Serial.print(gps.course.deg());
+      Serial.print("  Dir2Dest: ");
+      Serial.print(directionToDestination);
+      Serial.print("  RelCourse: ");
+      Serial.print(courseChangeNeeded);
+      Serial.print("  CurSpd: ");
+      Serial.println(gps.speed.kmph());
+      Serial.print("  lattitude: ");
+      Serial.print(gps.location.lat(), 6);
+      Serial.print("  longitude: ");
+      Serial.println(gps.location.lng(), 6);
+      
+  
+      // Within 7.0m arrived at destination
+      if (distanceToDestination <= 7.0)
+      {
+        Serial.println("CONGRATULATIONS: You've arrived!");
+        exit(1);
+      }
+  
+      Serial.print("DISTANCE: ");
+      Serial.print(distanceToDestination);
+      Serial.println(" meters to go.");
+      Serial.print("INSTRUCTION: ");
+  
+      Serial.println(courseChangeNeeded);  
+      if (courseChangeNeeded >= 345 || courseChangeNeeded < 15){      
+        run(255, HIGH, LOW, HIGH, LOW, 255);
+        return; 
+      }
+      else if (courseChangeNeeded >= 315 && courseChangeNeeded < 345){
+        run(255, HIGH, LOW, HIGH, LOW, 125);
+        return; 
+      }
+      else if (courseChangeNeeded >= 15 && courseChangeNeeded < 45){
+        run(125, HIGH, LOW, HIGH, LOW, 255);
+        return; 
+      }
+      else if (courseChangeNeeded >= 255 && courseChangeNeeded < 315){
+        run(255, HIGH, LOW, HIGH, LOW, 90); 
+        return;
+      }
+      else if (courseChangeNeeded >= 45 && courseChangeNeeded < 105){
+        run(90, HIGH, LOW, HIGH, LOW, 255);
+        return;
+      }
+      else{
+        run(0, HIGH, LOW, HIGH,  LOW, 0);
+        return;
+      }
     }
   }
 }
