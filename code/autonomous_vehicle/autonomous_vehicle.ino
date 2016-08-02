@@ -7,7 +7,13 @@
 
 // The serial connection to the GPS device
 // The TinyGPS++ object
-TinyGPSPlus gps;
+TinyGPSPlus gps1, gps2, gps3;
+
+float location_lat;
+float location_lng;
+
+float speed_kmph;
+
 unsigned long lastUpdateTime = 0;
 
 // Create a compass
@@ -57,6 +63,8 @@ void loop()
 {
 
  //Setting up LAT and LNG through Bluetooth communication
+ 
+ 
  while (Serial.available()>0 && LAT == 0) 
   {
     inData = Serial.readString();
@@ -73,6 +81,7 @@ void loop()
   while (LAT != 0 && LNG != 0){
     
     //reset command
+    
     if (Serial.available()>0 && Serial.readString() == "r"){
       LAT = 0;
       run(0, HIGH, LOW, HIGH, LOW, 0);
@@ -81,41 +90,47 @@ void loop()
     
   // If any characters have arrived from the GPS,
   // send them to the TinyGPS++ object
-  while (Serial1.available() > 0)
-    gps.encode(Serial1.read());
+  while (Serial1.available() > 0 && Serial2.available() > 0 && Serial3.available() >0){
+    gps1.encode(Serial1.read());
+    gps2.encode(Serial2.read());
+    gps3.encode(Serial3.read());
+  }
 
   // Every 2 seconds, do an update.
   if (millis() - lastUpdateTime >= 1000)
   {
-      Serial.println(LAT,6);
-      Serial.println(LNG,6);
-      
+    
       lastUpdateTime = millis();
       Serial.println();
 
-  
+      // average of the three gps modules readings
+      location_lat = (gps1.location.lat() +gps2.location.lat()+gps3.location.lat())/3;
+      location_lng = (gps1.location.lng() +gps2.location.lng()+gps3.location.lng())/3;
+      location_lng = (gps1.location.lng() +gps2.location.lng()+gps3.location.lng())/3;
+      speed_kmph = (gps1.speed.kmph() +gps2.speed.kmph()+gps3.speed.kmph())/3;
+      
       // Establish current status
       double distanceToDestination = TinyGPSPlus::distanceBetween(
-        gps.location.lat(), gps.location.lng(),LAT, LNG);
+        location_lat, location_lng,LAT, LNG);
       double courseToDestination = TinyGPSPlus::courseTo(
-        gps.location.lat(), gps.location.lng(), LAT, LNG);
+        location_lat, location_lng, LAT, LNG);
       const char *directionToDestination = TinyGPSPlus::cardinal(courseToDestination);
       int courseChangeNeeded = (int)(360 + courseToDestination + compass.GetHeadingDegrees()) % 360; 
   
-      Serial.print("DEBUG: Course2Dest: ");
+      Serial.print("  Course to Destination: ");
       Serial.print(courseToDestination);
-      Serial.print("  CurCourse: ");
-      Serial.print(gps.course.deg());
-      Serial.print("  Dir2Dest: ");
+      Serial.print("  Current Course: ");
+      Serial.print(compass.GetHeadingDegrees());
+      Serial.print("  Directions to Destination: ");
       Serial.print(directionToDestination);
-      Serial.print("  RelCourse: ");
+      Serial.print("  Relative Course: ");
       Serial.print(courseChangeNeeded);
-      Serial.print("  CurSpd: ");
-      Serial.println(gps.speed.kmph());
+      Serial.print("  Speed: ");
+      Serial.println(speed_kmph);
       Serial.print("  lattitude: ");
-      Serial.print(gps.location.lat(), 6);
+      Serial.print(location_lat, 6);
       Serial.print("  longitude: ");
-      Serial.println(gps.location.lng(), 6);
+      Serial.println(location_lng, 6);
       
   
       // Within 7.0m arrived at destination
@@ -153,6 +168,7 @@ void loop()
       }
       else{
         run(0, HIGH, LOW, HIGH,  LOW, 0);
+        //To Do: Implement code for turning 180 degrees
         return;
       }
     }
