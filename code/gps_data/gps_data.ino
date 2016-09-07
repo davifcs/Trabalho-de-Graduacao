@@ -32,9 +32,17 @@ boolean stringComplete2 = false;  // whether the string is complete
 boolean stringComplete3 = false;  // whether the string is complete
 
 File file;
-
+unsigned int filenumber = 1;
+String fileName = String();
 boolean over = false;
 
+// Define pinout for the L298N board
+int PWMA = 7;
+int IN1 = 6;
+int IN2 = 5;
+int IN3 = 4;
+int IN4 = 3;
+int PWMB = 2; 
 
 void setup() {
 
@@ -69,8 +77,25 @@ void setup() {
     Serial.println("initialization failed!");
     return;
   }
+  else{
+  Serial.println("initialization done.");
+  }
 
-  file = SD.open("gps_data.txt", FILE_WRITE);
+  while(filenumber != 0){
+    fileName = "data";
+    fileName += filenumber;
+    fileName += ".txt";
+    char charFileName[fileName.length()+1];
+    fileName.toCharArray(charFileName, fileName.length()+1);
+    
+    if(SD.exists(charFileName)){
+      filenumber++;
+    }
+    else{
+      file = SD.open(charFileName, FILE_WRITE);  
+      filenumber=0;
+    }
+  }
 }
 
 /*
@@ -82,6 +107,7 @@ void setup() {
 void loop() {
   // print the string when a newline arrives:
   if (stringComplete && stringComplete2 && stringComplete3 && file && Serial.read() != 'o' && over == false && 74 < inputString.length() < 80  &&  74 < inputString2.length() < 80 && 74 < inputString3.length() < 80 ) {
+    
     file.print("1-");
     file.print(inputString);
     file.flush();
@@ -95,18 +121,20 @@ void loop() {
     // clear the string:
     inputString2 = "";
     stringComplete2 = false;
-
+    
     file.print("3-");
     file.print(inputString3);
     file.flush();
     // clear the string:
     inputString3 = "";
     stringComplete3 = false;
-    
+
+    run(200, HIGH, LOW, HIGH, LOW, 200);
   }
 
 if(Serial.available()>0 && Serial.read() == 'o' ||  !digitalRead(8)){
     over = true;
+    run(0, HIGH, LOW, HIGH, LOW, 0);
     Serial.print("Over"); 
     file.close();
     }
@@ -156,3 +184,12 @@ void serialEvent3() {
     }
   }
 }
+
+ void run(int L, int LF, bool LR, bool RF, bool RR, int R){
+      analogWrite(PWMA, L); 
+      digitalWrite(IN1, LF);
+      digitalWrite(IN2, LR);
+      digitalWrite(IN3, RF);
+      digitalWrite(IN4, RR);
+      analogWrite(PWMB, R);
+  }
