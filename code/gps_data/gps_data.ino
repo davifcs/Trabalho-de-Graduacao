@@ -24,17 +24,26 @@ uint8_t gps_config_change[129]={
 
 
 String inputString = "";         // a string to hold incoming data
+String inputString1 = "";         // a string to hold incoming data
 String inputString2 = "";         // a string to hold incoming data
 String inputString3 = "";         // a string to hold incoming data
+int len1 = 0;
+int len2 = 0;
+int len3 = 0;
 
-boolean stringComplete = false;  // whether the string is complete
+boolean stringComplete= false;  // whether the string is complete
+boolean stringComplete1= false;  // whether the string is complete
 boolean stringComplete2 = false;  // whether the string is complete
 boolean stringComplete3 = false;  // whether the string is complete
 
 File file;
 unsigned int filenumber = 1;
 String fileName = String();
+boolean start = false;
 boolean over = false;
+String message = String();
+boolean gotogo = false;
+boolean wait = false;
 
 // Define pinout for the L298N board
 int PWMA = 7;
@@ -50,8 +59,6 @@ void setup() {
   digitalWrite(8, HIGH); // pull-up
   
   Serial.begin(9600);
-  
-  Serial.begin(115200);
  
   Serial1.begin(9600);
   Serial1.write(gps_config_change,sizeof(gps_config_change));
@@ -85,6 +92,7 @@ void setup() {
     fileName = "data";
     fileName += filenumber;
     fileName += ".txt";
+    
     char charFileName[fileName.length()+1];
     fileName.toCharArray(charFileName, fileName.length()+1);
     
@@ -106,14 +114,48 @@ void setup() {
  */
 void loop() {
   // print the string when a newline arrives:
-  if (stringComplete && stringComplete2 && stringComplete3 && file && Serial.read() != 'o' && over == false && 74 < inputString.length() < 80  &&  74 < inputString2.length() < 80 && 74 < inputString3.length() < 80 ) {
-    
+
+  len1 = inputString1.length() - '0';
+  len2 = inputString2.length() - '0';
+  len3 = inputString3.length() - '0';
+
+  if (len1 > 0 && len2 > 0 && len3 > 0 && start == false && gotogo == false){
+    len1 = 0;
+    len2 = 0;
+    len3 = 0;
+    delay(40000);
+    gotogo = true;
+    Serial.println("Ready");
+  }
+
+  if(Serial.available()>0 && Serial.read()=='s'){
+     start = true;
+     over = false;
+     wait = false;
+  inputString1 = "";
+  inputString2 = "";
+  inputString3 = "";
+  }
+
+  if (Serial.available()>0 && Serial.read()=='o'  ||  !digitalRead(8)){
+    over = true;
+    run(0, HIGH, LOW, HIGH, LOW, 0);
+    file.close();
+    Serial.println("File closed");
+    }  
+  
+  if(stringComplete1 && stringComplete2 && stringComplete3 && file && over == false && start == true ) {
+
+    Serial.println(inputString1.length());
+    Serial.println(inputString2.length());
+    Serial.println(inputString3.length());
     file.print("1-");
-    file.print(inputString);
+    file.print(inputString1);
     file.flush();
     // clear the string:
-    inputString = "";
+    inputString1 = "";
     stringComplete = false;
+    len1 = 0;
     
     file.print("2-");
     file.print(inputString2);
@@ -121,6 +163,7 @@ void loop() {
     // clear the string:
     inputString2 = "";
     stringComplete2 = false;
+    len2 = 0;
     
     file.print("3-");
     file.print(inputString3);
@@ -128,30 +171,24 @@ void loop() {
     // clear the string:
     inputString3 = "";
     stringComplete3 = false;
+    len3 = 0;
 
-    run(200, HIGH, LOW, HIGH, LOW, 200);
+    run(200, HIGH, LOW, HIGH, LOW, 201);
+
   }
-
-if(Serial.available()>0 && Serial.read() == 'o' ||  !digitalRead(8)){
-    over = true;
-    run(0, HIGH, LOW, HIGH, LOW, 0);
-    Serial.print("Over"); 
-    file.close();
-    }
-  
 }
-
  
 void serialEvent1() {
   while (Serial1.available()) {
     // get the new byte:
-    char inChar = (char)Serial1.read();
+    char inChar1 = (char)Serial1.read();
     // add it to the inputString:
-    inputString += inChar;
+    inputString1 += inChar1;
     // if the incoming character is a newline, set a flag
     // so the main loop can do something about it:
-    if (inChar == '\n') {
-      stringComplete = true;
+    if (inChar1 == '\n') {
+      stringComplete1 = true;
+      
     }
   }
 }
