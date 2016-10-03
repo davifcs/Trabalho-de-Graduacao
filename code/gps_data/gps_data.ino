@@ -36,14 +36,17 @@ boolean stringComplete1= false;  // whether the string is complete
 boolean stringComplete2 = false;  // whether the string is complete
 boolean stringComplete3 = false;  // whether the string is complete
 
+
+//Define variables for the SD card storage
 File file;
 unsigned int filenumber = 1;
 String fileName = String();
+
+//Define variables to control the start and end of recording 
 boolean start = false;
 boolean over = false;
-String message = String();
 boolean gotogo = false;
-boolean wait = false;
+
 
 // Define pinout for the L298N board
 int PWMA = 7;
@@ -79,31 +82,31 @@ void setup() {
    inputString2.reserve(200);
    inputString3.reserve(200);
 
-
-    if (!SD.begin(53)) {
-    Serial.println("initialization failed!");
-    return;
-  }
-  else{
-  Serial.println("initialization done.");
-  }
-
-  while(filenumber != 0){
-    fileName = "data";
-    fileName += filenumber;
-    fileName += ".txt";
-    
-    char charFileName[fileName.length()+1];
-    fileName.toCharArray(charFileName, fileName.length()+1);
-    
-    if(SD.exists(charFileName)){
-      filenumber++;
+  //Verifies if the card is connected and create a file
+  if (!SD.begin(53)) {
+  Serial.println("initialization failed!");
+  return;
     }
     else{
-      file = SD.open(charFileName, FILE_WRITE);  
-      filenumber=0;
+    Serial.println("initialization done.");
     }
-  }
+  
+    while(filenumber != 0){
+      fileName = "data";
+      fileName += filenumber;
+      fileName += ".txt";
+      
+      char charFileName[fileName.length()+1];
+      fileName.toCharArray(charFileName, fileName.length()+1);
+      
+      if(SD.exists(charFileName)){
+        filenumber++;
+      }
+      else{
+        file = SD.open(charFileName, FILE_WRITE);  
+        filenumber=0;
+      }
+    }
 }
 
 /*
@@ -112,7 +115,8 @@ void setup() {
  time loop() runs, so using delay inside loop can delay
  response.  Multiple bytes of data may be available.
  */
-void loop() {
+void loop() 
+{
   // print the string when a newline arrives:
 
   len1 = inputString1.length() - '0';
@@ -129,12 +133,11 @@ void loop() {
   }
 
   if(Serial.available()>0 && Serial.read()=='s'){
-     start = true;
-     over = false;
-     wait = false;
-  inputString1 = "";
-  inputString2 = "";
-  inputString3 = "";
+      start = true;
+      over = false;
+      inputString1 = "";
+      inputString2 = "";
+      inputString3 = "";
   }
 
   if (Serial.available()>0 && Serial.read()=='o'  ||  !digitalRead(8)){
